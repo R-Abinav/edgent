@@ -1,0 +1,27 @@
+{
+  "name": "edgent",
+  "version": "1.0.0",
+  "description": "P2P compute delegation protocol for AI Agents (or Edge AI Agents)",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/R-Abinav/edgent.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/R-Abinav/edgent/issues"
+  },
+  "homepage": "https://github.com/R-Abinav/edgent#readme",
+  "dependencies": {
+    "@types/node": "^25.6.0",
+    "tsx": "^4.21.0",
+    "typescript": "^6.0.3",
+    "viem": "^2.48.7"
+  }
+}
