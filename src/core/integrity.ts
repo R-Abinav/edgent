@@ -11,6 +11,13 @@ export interface ZKProof {
   publicSignals: string[];
 }
 
+export function axlKeyToBigInts(hexKey: string): [bigint, bigint] {
+  const full = BigInt('0x' + hexKey);
+  const lo = full & ((1n << 128n) - 1n);
+  const hi = full >> 128n;
+  return [lo, hi];
+}
+
 function stringToBits256(str: string): string[] {
   const bytes = Buffer.from(str).slice(0, 32);
   const padded = Buffer.alloc(32);
