@@ -1,34 +1,74 @@
-import { createHash } from 'crypto';
+import { groth16 } from 'snarkjs';
+import { buildPoseidon } from 'circomlibjs';
+import * as path from 'path';
+import { fileURLToPath } from 'url';
+import vkey from '../../circuits/build/verification_key.json' assert { type: 'json' };
 
-export interface IntegrityProof {
-  outputHash: string;
-  mode: 'hash' | 'zk';
-  zkProof?: {
-    proof: object;
-    publicSignals: string[];
-  };
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
+export interface ZKProof {
+  proof: object;
+  publicSignals: string[];
 }
 
-export function generateProof(output: string, prompt: string, model: string): IntegrityProof {
-  const outputHash = createHash('sha256').update(output).digest('hex');
+function stringToBits256(str: string): string[] {
+  const bytes = Buffer.from(str).slice(0, 32);
+  const padded = Buffer.alloc(32);
+  bytes.copy(padded);
+  const bits: string[] = [];
+  for (const byte of padded) {
+    for (let i = 0; i < 8; i++) {
+      bits.push(((byte >> i) & 1).toString());
+    }
+  }
+  return bits;
+}
+
+const WASM_PATH = path.resolve(__dirname, '../../circuits/build/compute_proof_js/compute_proof.wasm');
+const ZKEY_PATH = path.resolve(__dirname, '../../circuits/build/compute_proof_final.zkey');
+
+export async function generateZKProof(
+  output: string,
+  providerPubKeyX: bigint,
+  providerPubKeyY: bigint
+): Promise<ZKProof> {
+  const poseidon = await buildPoseidon();
   
-  return {
-    outputHash,
-    mode: 'hash'
+  const outputBits = stringToBits256(output);
+  
+  let lo_128bits = 0n;
+  for (let i = 0; i < 128; i++) {
+    if (outputBits[i] === '1') {
+      lo_128bits += (1n << BigInt(i));
+    }
+  }
+  
+  let hi_128bits = 0n;
+  for (let i = 0; i < 128; i++) {
+    if (outputBits[i + 128] === '1') {
+      hi_128bits += (1n << BigInt(i));
+    }
+  }
+
+  const outHash = poseidon([lo_128bits, hi_128bits]);
+  const outputCommitment = poseidon.F.toString(outHash);
+  
+  const walletHash = poseidon([providerPubKeyX, providerPubKeyY]);
+  const walletCommitment = poseidon.F.toString(walletHash);
+
+  const input = {
+    outputCommitment,
+    walletCommitment,
+    outputBits,
+    providerPubKeyX: providerPubKeyX.toString(),
+    providerPubKeyY: providerPubKeyY.toString()
   };
+
+  const { proof, publicSignals } = await groth16.fullProve(input, WASM_PATH, ZKEY_PATH);
+
+  return { proof, publicSignals };
 }
 
-export function verifyIntegrity(output: string, proof: IntegrityProof): boolean {
-  const recomputedHash = createHash('sha256').update(output).digest('hex');
-
-  if (proof.mode === 'hash') {
-    return recomputedHash === proof.outputHash;
-  }
-
-  if (proof.mode === 'zk') {
-    // future: groth16.verify() slots in here
-    return false; // not implemented yet, be explicit
-  }
-
-  return false;
+export async function verifyZKProof(zkProof: ZKProof): Promise<boolean> {
+  return await groth16.verify(vkey, zkProof.publicSignals, zkProof.proof);
 }
