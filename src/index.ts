@@ -1,6 +1,6 @@
 import { ENV } from './config/env.config';
-import { spawnAXL, AXLClient } from './axl';
-import { getResources } from './resources';
+import { spawnAXL, AXLClient } from './core/axl';
+import { getResources } from './core/resources';
 import express from 'express';
 
 async function main() {
@@ -15,7 +15,7 @@ async function main() {
     //using node-config-a (port 9002) for provider, node-config-b (port 9012) for requester
     const configPath = role === 'provider' ? './node-config-a.json' : './node-config-b.json';
     const apiPort = role === 'provider' ? 9002 : 9012;
-    
+
     //using 3001 for provider, 3002 for requester to avoid port conflicts during local testing
     const daemonPort = role === 'provider' ? 3001 : 3002;
 
@@ -63,7 +63,7 @@ async function main() {
             if (msg) {
                 const data = msg.data as any;
                 console.log(`[edgent] Received message from ${msg.fromPeerId}: ${data.type || 'unknown'}`);
-                
+
                 // Empty router for now
                 switch (data.type) {
                     default:
@@ -81,7 +81,7 @@ async function main() {
     //HTTP Server
     const app = express();
     app.use(express.json()); //middleware
-    
+
     app.get('/status', async (req, res) => {
         try {
             const resources = await getResources();

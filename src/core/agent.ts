@@ -5,7 +5,7 @@ import { runInference } from "./executor";
 const OLLAMA_MODEL = "tinyllama";
 const OLLAMA_MAX_TOKENS = 500;
 
-export async function runAgent(){
+export async function runAgent() {
     const args = process.argv.slice(2);
 
     //if force delegation present - skip local inference!
@@ -24,18 +24,18 @@ export async function runAgent(){
     const delegateUrl = `http://localhost:3002/delegate`;
 
     //if not constrained and can run ollama inference - try locally
-    if(!forceDelegate && !resources.isConstrained && resources.ollamaReachable){
+    if (!forceDelegate && !resources.isConstrained && resources.ollamaReachable) {
         //run the inference locally
         const result = await runInference(OLLAMA_MODEL, prompt);
 
         //if success -> print result, return
-        if(result) {
+        if (result) {
             console.log('[agent] Completed locally');
             console.log('[agent] Output:', result.output);
             console.log('[agent] Hash:', result.outputHash);
             return; // ← early return, done
         }
-        
+
         //if fail -> fall through to delegate
         console.log('[agent] Local inference failed, delegating...');
     }

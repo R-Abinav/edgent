@@ -1,5 +1,5 @@
 import si from 'systeminformation';
-import { ENV } from './config/env.config';
+import { ENV } from '../config/env.config';
 
 export interface ResourceStatus {
     cpuPercent: number;
@@ -17,7 +17,7 @@ export async function getResources(): Promise<ResourceStatus> {
     ]);
 
     const cpuPercent = load.currentLoad;
-    
+
     //mem.available is more accurate than mem.free for what's actually usable by applications.
     //systeminformation returns values in bytes, so we divide by 1024^2 for MB
     const freeRamMB = mem.available / (1024 * 1024);
