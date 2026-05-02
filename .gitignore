@@ -1,6 +1,5 @@
 #env vars
 .env
-.env.*
 
 #os stuff
 .DS_Store
