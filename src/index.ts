@@ -2,6 +2,7 @@ import { ENV } from './config/env.config';
 import { spawnAXL, AXLClient } from './core/axl';
 import { getResources } from './core/resources';
 import express from 'express';
+import path from 'path';
 
 import { randomUUID } from 'crypto';
 import { EventEmitter } from 'events';
@@ -42,6 +43,17 @@ async function main() {
 
     // Temporarily holds task output between task_result and payment_request messages
     const pendingOutputs = new Map<string, string>(); // requestId → output
+
+    // Rolling log of last 10 completed/failed jobs — served by /jobs endpoint
+    const recentJobs: Array<{
+        jobId: string;
+        requestId: string;
+        status: 'completed' | 'failed';
+        durationMs: number;
+        txHash: string;
+        txLink: string;
+        timestamp: number;
+    }> = [];
 
     const routerEvents = new EventEmitter();
 
@@ -211,6 +223,18 @@ async function main() {
                                 pendingTasks.get(data.requestId)!.resolve({ output, executionId, txHash });
                                 pendingTasks.delete(data.requestId);
                             }
+
+                            // Requester side: record the completed job
+                            recentJobs.push({
+                                jobId: data.jobId,
+                                requestId: data.requestId,
+                                status: 'completed',
+                                durationMs: 0,
+                                txHash,
+                                txLink,
+                                timestamp: Date.now(),
+                            });
+                            if (recentJobs.length > 50) recentJobs.shift();
                         } catch (err: any) {
                             console.error(`[edgent] Payment failed:`, err.message);
                             if (pendingTasks.has(data.requestId)) {
@@ -222,6 +246,17 @@ async function main() {
                     }
                     case 'payment_confirmed': {
                         console.log(`[edgent] Payment confirmed for ${data.requestId} by ${msg.fromPeerId}`);
+                        // Provider side: record the completed job
+                        recentJobs.push({
+                            jobId: data.jobId ?? '',
+                            requestId: data.requestId,
+                            status: 'completed',
+                            durationMs: 0, // provider doesn't know requester-side duration
+                            txHash: data.txHash ?? '',
+                            txLink: data.txLink ?? '',
+                            timestamp: Date.now(),
+                        });
+                        if (recentJobs.length > 50) recentJobs.shift(); // keep bounded
                         break;
                     }
                     default:
@@ -334,6 +369,14 @@ async function main() {
         } catch (err) {
             res.status(500).json({ error: 'Failed to fetch status' });
         }
+    });
+
+    app.get('/jobs', (req, res) => {
+        res.json(recentJobs.slice(-10).reverse());
+    });
+
+    app.get('/dashboard', (req, res) => {
+        res.sendFile(path.join(process.cwd(), 'dashboard/index.html'));
     });
 
     const server = app.listen(daemonPort, () => {

@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Edgent — Node Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:        #0a0c10;
+      --surface:   #111418;
+      --surface2:  #181c22;
+      --border:    #1f2530;
+      --accent:    #4f8aff;
+      --accent2:   #7c5fff;
+      --green:     #22c55e;
+      --red:       #ef4444;
+      --yellow:    #f59e0b;
+      --text:      #e2e8f0;
+      --muted:     #64748b;
+      --mono:      'JetBrains Mono', monospace;
+    }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      padding: 0 0 40px;
+    }
+
+    /* ── Top bar ── */
+    header {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      padding: 18px 32px;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+
+    .logo {
+      font-size: 18px;
+      font-weight: 700;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      letter-spacing: -0.5px;
+    }
+
+    .header-sep { flex: 1; }
+
+    #node-id {
+      font-family: var(--mono);
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .role-badge {
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.8px;
+      padding: 3px 10px;
+      border-radius: 20px;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      color: #fff;
+    }
+
+    #ens-name {
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--accent);
+    }
+
+    .status-dot {
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      background: var(--muted);
+      box-shadow: 0 0 0 2px var(--surface);
+      transition: background 0.3s;
+      flex-shrink: 0;
+    }
+    .status-dot.online  { background: var(--green); box-shadow: 0 0 8px var(--green); }
+    .status-dot.offline { background: var(--red); }
+
+    /* ── Main layout ── */
+    main { max-width: 1100px; margin: 32px auto; padding: 0 24px; }
+
+    h2 {
+      font-size: 13px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--muted);
+      margin-bottom: 14px;
+    }
+
+    /* ── Cards row ── */
+    .cards {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+      margin-bottom: 32px;
+    }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 20px 22px;
+      position: relative;
+      overflow: hidden;
+      transition: border-color 0.2s;
+    }
+    .card::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(135deg, rgba(79,138,255,0.04), transparent);
+      pointer-events: none;
+    }
+    .card:hover { border-color: #2a3545; }
+
+    .card-title {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      color: var(--muted);
+      margin-bottom: 16px;
+    }
+
+    .stat-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 6px 0;
+      border-bottom: 1px solid var(--border);
+      font-size: 13px;
+    }
+    .stat-row:last-child { border-bottom: none; }
+    .stat-label { color: var(--muted); }
+    .stat-value { font-weight: 500; font-family: var(--mono); font-size: 12px; }
+
+    .pill {
+      padding: 2px 8px;
+      border-radius: 10px;
+      font-size: 11px;
+      font-weight: 600;
+    }
+    .pill.yes { background: rgba(34,197,94,0.15); color: var(--green); }
+    .pill.no  { background: rgba(239,68,68,0.15);  color: var(--red); }
+    .pill.warn { background: rgba(245,158,11,0.15); color: var(--yellow); }
+
+    /* ── Jobs table ── */
+    .jobs-section { margin-top: 8px; }
+
+    .jobs-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 14px;
+    }
+
+    #last-update {
+      font-size: 11px;
+      color: var(--muted);
+      font-family: var(--mono);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+      font-size: 13px;
+    }
+
+    thead { background: var(--surface2); }
+    th {
+      text-align: left;
+      padding: 12px 16px;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      color: var(--muted);
+      border-bottom: 1px solid var(--border);
+    }
+
+    td {
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--border);
+      vertical-align: middle;
+    }
+    tr:last-child td { border-bottom: none; }
+
+    tr { transition: background 0.15s; }
+    tr:hover td { background: rgba(255,255,255,0.02); }
+
+    .job-id { font-family: var(--mono); font-size: 11px; color: var(--muted); }
+
+    .status-badge {
+      display: inline-block;
+      padding: 3px 10px;
+      border-radius: 20px;
+      font-size: 11px;
+      font-weight: 600;
+    }
+    .status-badge.completed { background: rgba(34,197,94,0.15);  color: var(--green); }
+    .status-badge.failed    { background: rgba(239,68,68,0.15);  color: var(--red); }
+    .status-badge.pending   { background: rgba(245,158,11,0.15); color: var(--yellow); }
+
+    .tx-link {
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--accent);
+      text-decoration: none;
+      transition: color 0.15s;
+    }
+    .tx-link:hover { color: #7ab0ff; text-decoration: underline; }
+
+    .empty-state {
+      text-align: center;
+      padding: 48px 16px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+    .empty-state .icon { font-size: 32px; margin-bottom: 10px; }
+
+    /* ── Pulse animation for live dot ── */
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50%       { opacity: 0.4; }
+    }
+    .status-dot.online { animation: pulse 2s ease-in-out infinite; }
+
+    /* ── Models list ── */
+    .model-tag {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 6px;
+      font-size: 11px;
+      font-family: var(--mono);
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      margin: 2px 2px 2px 0;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <span class="logo">⚡ Edgent</span>
+  <div class="header-sep"></div>
+  <span id="ens-name">—</span>
+  <span id="node-id">connecting…</span>
+  <span id="role-badge" class="role-badge">—</span>
+  <div id="status-dot" class="status-dot"></div>
+</header>
+
+<main>
+  <h2>Node Resources</h2>
+  <div class="cards">
+
+    <!-- Resources card -->
+    <div class="card">
+      <div class="card-title">💻 Resources</div>
+      <div class="stat-row">
+        <span class="stat-label">CPU</span>
+        <span class="stat-value" id="cpu">—</span>
+      </div>
+      <div class="stat-row">
+        <span class="stat-label">Free RAM</span>
+        <span class="stat-value" id="ram">—</span>
+      </div>
+      <div class="stat-row">
+        <span class="stat-label">Constrained</span>
+        <span id="constrained">—</span>
+      </div>
+    </div>
+
+    <!-- Ollama card -->
+    <div class="card">
+      <div class="card-title">🤖 Ollama</div>
+      <div class="stat-row">
+        <span class="stat-label">Status</span>
+        <span id="ollama-status">—</span>
+      </div>
+      <div class="stat-row" style="flex-direction:column; align-items:flex-start; gap:6px;">
+        <span class="stat-label">Models</span>
+        <div id="models">—</div>
+      </div>
+    </div>
+
+    <!-- Network card -->
+    <div class="card">
+      <div class="card-title">🌐 Network</div>
+      <div class="stat-row">
+        <span class="stat-label">Peers</span>
+        <span class="stat-value" id="peer-count">—</span>
+      </div>
+      <div class="stat-row">
+        <span class="stat-label">AXL Key</span>
+        <span class="stat-value" id="axl-key">—</span>
+      </div>
+      <div class="stat-row">
+        <span class="stat-label">Role</span>
+        <span class="stat-value" id="role-detail">—</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Jobs table -->
+  <div class="jobs-section">
+    <div class="jobs-header">
+      <h2 style="margin:0">Recent Jobs</h2>
+      <span id="last-update">—</span>
+    </div>
+    <table id="jobs-table">
+      <thead>
+        <tr>
+          <th>Job ID</th>
+          <th>Status</th>
+          <th>Time</th>
+          <th>txHash</th>
+          <th>Explorer</th>
+        </tr>
+      </thead>
+      <tbody id="jobs-body">
+        <tr>
+          <td colspan="5">
+            <div class="empty-state">
+              <div class="icon">📭</div>
+              No jobs yet — waiting for delegation…
+            </div>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</main>
+
+<script>
+  function trunc(str, n = 16) {
+    if (!str) return '—';
+    return str.length > n ? str.slice(0, n) + '…' : str;
+  }
+
+  function fmtTime(ts) {
+    return new Date(ts).toLocaleTimeString();
+  }
+
+  function pill(val, trueLabel = 'Yes', falseLabel = 'No') {
+    const cls = val ? 'yes' : 'no';
+    return `<span class="pill ${cls}">${val ? trueLabel : falseLabel}</span>`;
+  }
+
+  function updateStatus(status) {
+    const dot = document.getElementById('status-dot');
+    dot.className = 'status-dot online';
+
+    document.getElementById('node-id').textContent = trunc(status.nodeId, 20);
+    document.getElementById('axl-key').textContent  = trunc(status.nodeId, 16);
+    document.getElementById('role-badge').textContent = (status.role || '').toUpperCase();
+    document.getElementById('role-detail').textContent = status.role || '—';
+
+    const r = status.resources || {};
+    document.getElementById('cpu').textContent     = r.cpuPercent != null ? r.cpuPercent.toFixed(1) + '%' : '—';
+    document.getElementById('ram').textContent     = r.freeRamMB  != null ? (r.freeRamMB / 1024).toFixed(1) + ' GB' : '—';
+    document.getElementById('constrained').innerHTML = pill(r.isConstrained, 'Yes ⚠️', 'No ✓');
+
+    document.getElementById('ollama-status').innerHTML = pill(r.ollamaReachable, 'Reachable', 'Offline');
+
+    const models = (r.availableModels || []);
+    document.getElementById('models').innerHTML = models.length
+      ? models.map(m => `<span class="model-tag">${m}</span>`).join('')
+      : '<span class="model-tag" style="color:var(--muted)">none</span>';
+
+    document.getElementById('peer-count').textContent = (status.peers || []).length;
+
+    const ens = status.ensName || window._ensName || null;
+    document.getElementById('ens-name').textContent = ens || '—';
+  }
+
+  function updateJobs(jobs) {
+    const tbody = document.getElementById('jobs-body');
+    if (!jobs || jobs.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="5"><div class="empty-state"><div class="icon">📭</div>No jobs yet — waiting for delegation…</div></td></tr>`;
+      return;
+    }
+    tbody.innerHTML = jobs.map(j => {
+      const txShort = j.txHash ? j.txHash.slice(0, 10) + '…' : '—';
+      const txHref  = j.txLink || (j.txHash ? `https://sepolia.basescan.org/tx/${j.txHash}` : null);
+      return `<tr>
+        <td class="job-id">${trunc(j.jobId, 18)}</td>
+        <td><span class="status-badge ${j.status}">${j.status}</span></td>
+        <td style="color:var(--muted);font-family:var(--mono);font-size:11px">${fmtTime(j.timestamp)}</td>
+        <td><span style="font-family:var(--mono);font-size:11px;color:var(--muted)">${txShort}</span></td>
+        <td>${txHref ? `<a class="tx-link" href="${txHref}" target="_blank">basescan ↗</a>` : '—'}</td>
+      </tr>`;
+    }).join('');
+  }
+
+  let pollFails = 0;
+
+  async function refresh() {
+    try {
+      const [status, jobs] = await Promise.all([
+        fetch('/status').then(r => r.json()),
+        fetch('/jobs').then(r => r.json()),
+      ]);
+      updateStatus(status);
+      updateJobs(jobs);
+      pollFails = 0;
+      document.getElementById('last-update').textContent = 'Updated ' + new Date().toLocaleTimeString();
+    } catch (err) {
+      pollFails++;
+      if (pollFails >= 3) {
+        document.getElementById('status-dot').className = 'status-dot offline';
+        document.getElementById('last-update').textContent = 'Daemon unreachable';
+      }
+    }
+  }
+
+  refresh();
+  setInterval(refresh, 2000);
+</script>
+</body>
+</html>
