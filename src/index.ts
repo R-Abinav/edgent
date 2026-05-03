@@ -7,6 +7,7 @@ import { randomUUID } from 'crypto';
 import { EventEmitter } from 'events';
 import { runInference } from './core/executor';
 import { generateZKProof, verifyZKProof, axlKeyToBigInts } from './core/integrity';
+import { notifyKeeperHub } from './core/payment';
 
 async function main() {
     //read role from CLI arg
@@ -37,6 +38,9 @@ async function main() {
         resolve: (result: any) => void;
         reject: (err: Error) => void;
     }>();
+
+    // Temporarily holds task output between task_result and payment_request messages
+    const pendingOutputs = new Map<string, string>(); // requestId → output
 
     const routerEvents = new EventEmitter();
 
@@ -129,6 +133,20 @@ async function main() {
                                 },
                                 zkProof
                             });
+
+                            // x402: send payment_request after delivering result
+                            await client.send(msg.fromPeerId, {
+                                type: 'payment_request',
+                                jobId: data.jobId,
+                                requestId: data.requestId,
+                                amount: ENV.PRICE_PER_JOB_USDC,
+                                currency: 'USDC',
+                                chain: 'base-sepolia',
+                                walletAddress: ENV.PROVIDER_WALLET_ADDRESS,
+                                outputCommitment: zkProof.publicSignals[0]
+                            });
+                            console.log(`[edgent] Sent x402 payment_request for job ${data.jobId}`);
+
                         } catch (err: any) {
                             console.error(`[edgent] Task failed:`, err.message);
                         }
@@ -140,20 +158,56 @@ async function main() {
                         console.log(`[edgent] Verifying ZK proof... ${isValid ? 'valid' : 'invalid'}`);
                         
                         if (isValid) {
-                            // TODO Phase 3: Release escrow payment via wallet.ts + escrow.ts
-                            // const { executionRef, txHash } = await releasePayment(data.requestId, data.result.output);
-                            // Then call KeeperHub webhook via payment.ts
-                            // const keeperRef = await notifyKeeperHub(executionRef, txHash);
-                            console.log(`[edgent] [TODO: escrow release + KeeperHub] ZK proof valid, payment would release here`);
-                        }
-                
-                        if (pendingTasks.has(data.requestId)) {
-                            if (isValid) {
-                                pendingTasks.get(data.requestId)!.resolve(data.result);
-                            } else {
+                            // Store output — will be resolved when payment_request arrives
+                            pendingOutputs.set(data.requestId, data.result.output);
+                            console.log(`[edgent] ZK proof valid. Awaiting x402 payment_request...`);
+                        } else {
+                            // Reject immediately on bad proof — no payment will follow
+                            if (pendingTasks.has(data.requestId)) {
                                 pendingTasks.get(data.requestId)!.reject(new Error('Invalid ZK proof'));
+                                pendingTasks.delete(data.requestId);
                             }
-                            pendingTasks.delete(data.requestId);
+                        }
+                        break;
+                    }
+                    case 'payment_request': {
+                        console.log(`[edgent] Received x402 payment_request from ${msg.fromPeerId}`);
+                        console.log(`[edgent] ${data.amount} ${data.currency} → ${data.walletAddress}`);
+
+                        try {
+                            const { executionId, txHash, txLink } = await notifyKeeperHub(
+                                data.jobId,
+                                data.outputCommitment
+                            );
+                            console.log(`[edgent] KeeperHub executionId: ${executionId}`);
+                            console.log(`[edgent] txHash: ${txHash}`);
+                            console.log(`[edgent] Explorer: ${txLink}`);
+
+                            // Send payment_confirmed back to provider
+                            await client.send(msg.fromPeerId, {
+                                type: 'payment_confirmed',
+                                requestId: data.requestId,
+                                jobId: data.jobId,
+                                fromNodeId: topology.ourPublicKey,
+                                toNodeId: msg.fromPeerId,
+                                executionId,
+                                txHash,
+                                txLink
+                            });
+
+                            // Resolve the pending /delegate promise with the stored output
+                            if (pendingTasks.has(data.requestId)) {
+                                const output = pendingOutputs.get(data.requestId) ?? '';
+                                pendingOutputs.delete(data.requestId);
+                                pendingTasks.get(data.requestId)!.resolve({ output, executionId, txHash });
+                                pendingTasks.delete(data.requestId);
+                            }
+                        } catch (err: any) {
+                            console.error(`[edgent] Payment failed:`, err.message);
+                            if (pendingTasks.has(data.requestId)) {
+                                pendingTasks.get(data.requestId)!.reject(err);
+                                pendingTasks.delete(data.requestId);
+                            }
                         }
                         break;
                     }
