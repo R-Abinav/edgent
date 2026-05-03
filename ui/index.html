@@ -1,0 +1,706 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Edgent | Autonomous Compute Delegation</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #000000;
+    --primary: #00ff41;
+    --accent: #ffb000;
+    --surface: rgba(0, 20, 5, 0.85);
+    --border: rgba(0, 255, 65, 0.3);
+    --text-dim: rgba(0, 255, 65, 0.5);
+    --font: 'IBM Plex Mono', monospace;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    margin: 0;
+    padding: 0;
+    background-color: var(--bg);
+    color: var(--primary);
+    font-family: var(--font);
+    overflow-x: hidden;
+  }
+
+  /* Scanline effect */
+  body::before {
+    content: "";
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    pointer-events: none;
+    z-index: 9999;
+    background: repeating-linear-gradient(
+      to bottom,
+      rgba(0, 0, 0, 0),
+      rgba(0, 0, 0, 0) 2px,
+      rgba(0, 0, 0, 0.03) 2px,
+      rgba(0, 0, 0, 0.03) 4px
+    );
+  }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar {
+    width: 10px;
+  }
+  ::-webkit-scrollbar-track {
+    background: var(--bg);
+  }
+  ::-webkit-scrollbar-thumb {
+    background: #003300;
+    border: 1px solid var(--border);
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--primary);
+  }
+
+  /* Common utilities */
+  .dim { color: var(--text-dim); }
+  .amber { color: var(--accent); }
+  .green { color: var(--primary); }
+
+  /* Section 1 - HERO */
+  #hero {
+    position: relative;
+    height: 100vh;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    overflow: hidden;
+  }
+
+  #hero video.bg-video {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    z-index: 0;
+  }
+
+  #hero .overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.75);
+    z-index: 1;
+  }
+
+  #hero .content {
+    position: relative;
+    z-index: 2;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2rem;
+  }
+
+  .ascii-logo {
+    white-space: pre;
+    font-size: clamp(8px, 1.5vw, 16px);
+    line-height: 1.2;
+    color: rgba(0, 255, 65, 0.7);
+    text-shadow: 0 0 10px rgba(0, 255, 65, 0.3);
+    margin-bottom: 1rem;
+    font-weight: 700;
+  }
+
+  .tagline {
+    font-size: 1.2rem;
+    max-width: 600px;
+  }
+
+  .badges {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  .retro-badge {
+    padding: 0.5rem 1rem;
+    border: 1px solid var(--border);
+    background: rgba(0, 20, 5, 0.4);
+    font-size: 0.9rem;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+  }
+
+  .cmd-box {
+    display: flex;
+    align-items: center;
+    background: var(--surface);
+    border: 1px solid var(--primary);
+    padding: 1rem;
+    border-radius: 4px;
+    gap: 2rem;
+    max-width: 90vw;
+    text-align: left;
+    box-shadow: 0 0 15px rgba(0, 255, 65, 0.1);
+  }
+
+  .cmd-box code {
+    font-family: var(--font);
+    font-size: 0.95rem;
+    white-space: pre-wrap;
+    word-break: break-all;
+  }
+
+  .copy-btn {
+    background: transparent;
+    border: 1px solid var(--accent);
+    color: var(--accent);
+    padding: 0.5rem 1rem;
+    cursor: pointer;
+    font-family: var(--font);
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    transition: all 0.2s;
+  }
+  .copy-btn:hover {
+    background: var(--accent);
+    color: var(--bg);
+  }
+
+  .scroll-indicator {
+    position: absolute;
+    bottom: 2rem;
+    z-index: 2;
+    font-size: 0.9rem;
+    animation: blink 1.5s infinite;
+  }
+
+  @keyframes blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0; }
+  }
+
+  /* Section 2 - WHY EDGENT */
+  #why-edgent {
+    height: 300vh;
+    position: relative;
+  }
+
+  .sticky-container {
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    display: flex;
+    padding: 0 5%;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .left-half {
+    width: 45%;
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+  }
+
+  .reveal {
+    opacity: 0;
+    transform: translateX(-40px);
+    transition: all 0.6s ease;
+    font-size: clamp(1.2rem, 2.5vw, 2rem);
+    font-weight: 500;
+  }
+  .reveal.visible {
+    opacity: 1;
+    transform: translateX(0);
+  }
+
+  .reveal:nth-child(1) { transition-delay: 0.00s; }
+  .reveal:nth-child(2) { transition-delay: 0.15s; }
+  .reveal:nth-child(3) { transition-delay: 0.30s; }
+  .reveal:nth-child(4) { transition-delay: 0.45s; }
+  .reveal:nth-child(5) { transition-delay: 0.60s; }
+  .reveal:nth-child(6) { transition-delay: 0.75s; }
+
+  .right-half {
+    width: 45%;
+    display: flex;
+    justify-content: center;
+  }
+
+  .terminal-frame {
+    width: 100%;
+    max-width: 800px;
+    background: var(--surface);
+    border: 1px solid var(--primary);
+    box-shadow: 0 0 20px var(--primary), 0 0 40px rgba(0, 255, 65, 0.3);
+    border-radius: 6px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .terminal-header {
+    background: rgba(0, 255, 65, 0.1);
+    border-bottom: 1px solid var(--border);
+    padding: 0.5rem 1rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+  }
+
+  .dots {
+    display: flex;
+    gap: 0.4rem;
+  }
+  .dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--border);
+  }
+  .dot:nth-child(1) { background: #ff5f56; }
+  .dot:nth-child(2) { background: #ffbd2e; }
+  .dot:nth-child(3) { background: #27c93f; }
+
+  .terminal-title {
+    font-size: 0.8rem;
+    color: var(--primary);
+    opacity: 0.8;
+  }
+
+  .terminal-body {
+    position: relative;
+    width: 100%;
+    padding-bottom: 50%; /* 2:1 aspect ratio */
+  }
+
+  .terminal-body video {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .audio-toggle {
+    position: absolute;
+    bottom: 10px;
+    right: 10px;
+    background: rgba(0, 20, 5, 0.8);
+    border: 1px solid var(--border);
+    color: var(--primary);
+    padding: 0.3rem 0.6rem;
+    font-family: var(--font);
+    font-size: 0.8rem;
+    cursor: pointer;
+    z-index: 10;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+  }
+  .audio-toggle:hover {
+    background: var(--primary);
+    color: var(--bg);
+  }
+
+  /* Section 3 - ABOUT */
+  #about {
+    padding: 8rem 1rem;
+    max-width: 700px;
+    margin: 0 auto;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    gap: 2.5rem;
+    align-items: center;
+  }
+
+  .cursor::after {
+    content: "█";
+    animation: blink 1s step-start infinite;
+    margin-left: 5px;
+  }
+
+  #about h2 {
+    font-size: 2rem;
+    margin: 0;
+  }
+
+  #about p {
+    font-size: 1.1rem;
+    line-height: 1.6;
+    margin: 0;
+  }
+
+  .warning-pill {
+    padding: 0.5rem 1rem;
+    border: 1px solid var(--accent);
+    background: rgba(255, 176, 0, 0.1);
+    color: var(--accent);
+    font-weight: 700;
+    display: inline-block;
+  }
+
+  .tech-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.8rem;
+    justify-content: center;
+  }
+
+  .tech-grid .retro-badge {
+    border-color: var(--text-dim);
+    color: var(--text-dim);
+  }
+
+  /* Section 4 - SETUP GUIDE */
+  #setup {
+    padding: 4rem 1rem 8rem;
+    max-width: 800px;
+    margin: 0 auto;
+  }
+
+  #setup .header {
+    margin-bottom: 3rem;
+  }
+  
+  #setup h2 {
+    font-size: 2rem;
+    margin: 0 0 0.5rem 0;
+  }
+
+  .step-block {
+    margin-bottom: 2rem;
+  }
+
+  .step-header {
+    display: flex;
+    align-items: baseline;
+    gap: 1rem;
+    margin-bottom: 1rem;
+  }
+
+  .step-number {
+    font-weight: 700;
+    font-size: 1.2rem;
+  }
+
+  .step-desc {
+    font-size: 1.1rem;
+  }
+
+  .step-cmd {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    padding: 1rem;
+    border-radius: 4px;
+    position: relative;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+  }
+
+  .step-cmd code {
+    white-space: pre-wrap;
+    word-break: break-all;
+    line-height: 1.5;
+    flex-grow: 1;
+    margin-right: 1rem;
+  }
+
+  .step-cmd .copy-btn {
+    flex-shrink: 0;
+  }
+
+  .dashboard-link {
+    text-align: center;
+    margin-top: 3rem;
+    font-size: 1rem;
+  }
+
+  /* Section 5 - FOOTER */
+  footer {
+    border-top: 1px solid var(--primary);
+    box-shadow: 0 -5px 20px rgba(0, 255, 65, 0.1);
+    padding: 2rem 5%;
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+  }
+
+  .footer-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 1rem;
+  }
+
+  .footer-left {
+    display: flex;
+    flex-direction: column;
+  }
+  .footer-logo {
+    font-weight: 700;
+    font-size: 1.2rem;
+  }
+
+  .footer-center {
+    font-weight: 700;
+  }
+
+  .footer-right a {
+    text-decoration: none;
+    color: var(--primary);
+    padding: 0.5rem 1rem;
+    border: 1px solid var(--border);
+    transition: all 0.2s;
+  }
+  .footer-right a:hover {
+    background: var(--primary);
+    color: var(--bg);
+  }
+
+  .footer-bottom {
+    text-align: center;
+    font-size: 0.8rem;
+    opacity: 0.3;
+  }
+
+  @media (max-width: 768px) {
+    .sticky-container {
+      flex-direction: column;
+      justify-content: center;
+      gap: 3rem;
+    }
+    .left-half, .right-half {
+      width: 100%;
+    }
+    .reveal {
+      font-size: 1.2rem;
+    }
+    .footer-top {
+      flex-direction: column;
+      text-align: center;
+    }
+  }
+</style>
+</head>
+<body>
+
+  <!-- HERO -->
+  <section id="hero">
+    <video class="bg-video" src="demo.mp4" autoplay muted loop playsinline></video>
+    <div class="overlay"></div>
+    <div class="content">
+      <div class="ascii-logo">███████╗██████╗  ██████╗ ███████╗███╗   ██╗████████╗
+██╔════╝██╔══██╗██╔════╝ ██╔════╝████╗  ██║╚══██╔══╝
+█████╗  ██║  ██║██║  ███╗█████╗  ██╔██╗ ██║   ██║   
+██╔══╝  ██║  ██║██║   ██║██╔══╝  ██║╚██╗██║   ██║   
+███████╗██████╔╝╚██████╔╝███████╗██║ ╚████║   ██║   
+╚══════╝╚═════╝  ╚═════╝ ╚══════╝╚═╝  ╚═══╝   ╚═╝</div>
+      <div class="tagline amber">When your agent runs out of compute, it finds more, pays for it, and finishes the job.</div>
+      <div class="badges">
+        <div class="retro-badge">[ AXL MESH ]</div>
+        <div class="retro-badge">[ ZK VERIFIED ]</div>
+        <div class="retro-badge">[ KEEPERHUB ]</div>
+      </div>
+      <div class="cmd-box">
+        <code id="hero-cmd">curl -fsSL https://raw.githubusercontent.com/R-Abinav/edgent/main/install.sh | bash</code>
+        <button class="copy-btn" onclick="copyText('hero-cmd', this)">COPY</button>
+      </div>
+    </div>
+    <div class="scroll-indicator dim">▼ SCROLL</div>
+  </section>
+
+  <!-- WHY EDGENT -->
+  <section id="why-edgent">
+    <div class="sticky-container">
+      <div class="left-half">
+        <div class="reveal"><span class="amber">&gt;</span> your agent hits OOM mid-task...</div>
+        <div class="reveal"><span class="amber">&gt;</span> no cloud. no coordinator. no human.</div>
+        <div class="reveal"><span class="amber">&gt;</span> it finds a peer on the encrypted mesh.</div>
+        <div class="reveal"><span class="amber">&gt;</span> stakes USDC. delegates the job.</div>
+        <div class="reveal"><span class="amber">&gt;</span> ZK proof verified. payment released.</div>
+        <div class="reveal"><span class="amber">&gt;</span> job complete. fully autonomous.</div>
+      </div>
+      <div class="right-half">
+        <div class="terminal-frame">
+          <div class="terminal-header">
+            <div class="dots">
+              <div class="dot"></div>
+              <div class="dot"></div>
+              <div class="dot"></div>
+            </div>
+            <div class="terminal-title">edgent@node:~$</div>
+          </div>
+          <div class="terminal-body">
+            <video id="terminal-video" src="demo.mp4" autoplay muted loop playsinline></video>
+            <button class="audio-toggle" onclick="toggleAudio()">
+              <span id="audio-icon">🔇</span> UNMUTE
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ABOUT -->
+  <section id="about">
+    <h2 class="green">&gt; WHAT IS EDGENT<span class="cursor"></span></h2>
+    <p class="dim">Edgent is a daemon that runs on edge devices. When an AI agent runs out of resources, it autonomously discovers peers over an AXL encrypted mesh, delegates the compute task, verifies the result with a ZK proof, and pays via USDC through KeeperHub — no human, no cloud, no coordinator.</p>
+    <div class="warning-pill">⚠ CURRENT VERSION: OLLAMA-BASED EDGE DEVICES ONLY</div>
+    <div class="tech-grid">
+      <div class="retro-badge">AXL</div>
+      <div class="retro-badge">Circom</div>
+      <div class="retro-badge">snarkjs</div>
+      <div class="retro-badge">KeeperHub</div>
+      <div class="retro-badge">Base</div>
+      <div class="retro-badge">Sepolia</div>
+      <div class="retro-badge">viem</div>
+      <div class="retro-badge">ollama</div>
+      <div class="retro-badge">NVIDIA Jetson</div>
+    </div>
+  </section>
+
+  <!-- SETUP GUIDE -->
+  <section id="setup">
+    <div class="header">
+      <h2 class="green">&gt; SETUP_GUIDE.SH</h2>
+    </div>
+
+    <div class="step-block">
+      <div class="step-header">
+        <span class="step-number amber">Step 1 —</span>
+        <span class="step-desc green">Install:</span>
+      </div>
+      <div class="step-cmd">
+        <code id="cmd-1">curl -fsSL https://raw.githubusercontent.com/R-Abinav/edgent/main/install.sh | bash</code>
+        <button class="copy-btn" onclick="copyText('cmd-1', this)">COPY</button>
+      </div>
+    </div>
+
+    <div class="step-block">
+      <div class="step-header">
+        <span class="step-number amber">Step 2 —</span>
+        <span class="step-desc green">Configure:</span>
+      </div>
+      <div class="step-cmd">
+        <code id="cmd-2"># Edit .env — set your role and wallet
+ROLE=provider
+WALLET_PRIVATE_KEY=0x...
+ESCROW_CONTRACT_ADDRESS=0x...</code>
+        <button class="copy-btn" onclick="copyText('cmd-2', this)">COPY</button>
+      </div>
+    </div>
+
+    <div class="step-block">
+      <div class="step-header">
+        <span class="step-number amber">Step 3 —</span>
+        <span class="step-desc green">Start provider (Dell / powerful node):</span>
+      </div>
+      <div class="step-cmd">
+        <code id="cmd-3">npx tsx src/index.ts --role=provider</code>
+        <button class="copy-btn" onclick="copyText('cmd-3', this)">COPY</button>
+      </div>
+    </div>
+
+    <div class="step-block">
+      <div class="step-header">
+        <span class="step-number amber">Step 4 —</span>
+        <span class="step-desc green">Start requester + run agent (Jetson / edge node):</span>
+      </div>
+      <div class="step-cmd">
+        <code id="cmd-4">npx tsx src/index.ts --role=requester
+npx tsx src/agent.ts --force-delegate --prompt="your task here"</code>
+        <button class="copy-btn" onclick="copyText('cmd-4', this)">COPY</button>
+      </div>
+    </div>
+
+    <div class="dashboard-link dim">Open dashboard at http://localhost:3001/dashboard</div>
+  </section>
+
+  <!-- FOOTER -->
+  <footer>
+    <div class="footer-top">
+      <div class="footer-left">
+        <div class="footer-logo green">⚡ EDGENT</div>
+        <div class="dim" style="font-size: 0.9rem; margin-top: 0.5rem;">Autonomous Compute Delegation</div>
+      </div>
+      <div class="footer-center amber">ETHGlobal Open Agents 2026</div>
+      <div class="footer-right">
+        <a href="https://github.com/R-Abinav/edgent" target="_blank" rel="noopener noreferrer">[ GITHUB ↗ ]</a>
+      </div>
+    </div>
+    <div class="footer-bottom">Built with AXL · Circom · KeeperHub · Base · viem · ollama</div>
+  </footer>
+
+  <script>
+    // Audio toggle functionality
+    function toggleAudio() {
+      const vid = document.getElementById('terminal-video');
+      const btn = document.querySelector('.audio-toggle');
+      
+      if (vid.muted) {
+        vid.muted = false;
+        btn.innerHTML = '<span id="audio-icon">🔊</span> MUTE';
+      } else {
+        vid.muted = true;
+        btn.innerHTML = '<span id="audio-icon">🔇</span> UNMUTE';
+      }
+    }
+
+    // Copy to clipboard functionality
+    function copyText(elementId, btn) {
+      const text = document.getElementById(elementId).innerText;
+      navigator.clipboard.writeText(text).then(() => {
+        const originalText = btn.innerText;
+        btn.innerText = 'COPIED ✓';
+        btn.style.borderColor = 'var(--primary)';
+        btn.style.color = 'var(--primary)';
+        setTimeout(() => {
+          btn.innerText = 'COPY';
+          btn.style.borderColor = 'var(--accent)';
+          btn.style.color = 'var(--accent)';
+        }, 2000);
+      });
+    }
+
+    // Scroll reveal using IntersectionObserver
+    document.addEventListener("DOMContentLoaded", () => {
+      const reveals = document.querySelectorAll('.reveal');
+      
+      const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+          if (entry.isIntersecting) {
+            entry.target.classList.add('visible');
+          } else {
+            // Optional: remove class to animate again when scrolling back up
+            entry.target.classList.remove('visible');
+          }
+        });
+      }, {
+        threshold: 0.5,
+        rootMargin: "0px 0px -100px 0px"
+      });
+
+      reveals.forEach(reveal => {
+        observer.observe(reveal);
+      });
+    });
+  </script>
+</body>
+</html>
