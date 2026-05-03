@@ -30,6 +30,7 @@ export const ENV = {
 
   // Escrow contract (deployed on Base Sepolia)
   ESCROW_CONTRACT_ADDRESS: process.env.ESCROW_CONTRACT_ADDR || '',
+  USDC_CONTRACT_ADDRESS: process.env.USDC_CONTRACT_ADDRESS || '0x036CbD53842c5426634e7929541eC2318f3dCF7e',
 
   // KeeperHub
   KEEPERHUB_API_KEY: process.env.KEEPERHUB_API_KEY || '',

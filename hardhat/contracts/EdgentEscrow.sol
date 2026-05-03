@@ -1,8 +1,15 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
+interface IERC20 {
+    function transferFrom(address from, address to, uint256 amount) external returns (bool);
+    function transfer(address to, uint256 amount) external returns (bool);
+}
+
 contract EdgentEscrow {
     uint256 public constant RELEASE_TIMEOUT = 1 hours;
+
+    IERC20 public usdc;
 
     struct StakeData {
         address requester;
@@ -22,29 +29,32 @@ contract EdgentEscrow {
     event TimeoutClaimed(bytes32 indexed jobId, address indexed provider, uint256 amount);
     event Refunded(bytes32 indexed jobId, address indexed requester, uint256 amount);
 
-    constructor(address _operator) {
+    constructor(address _operator, address _usdc) {
         operator = _operator;
+        usdc = IERC20(_usdc);
     }
 
-    // requester locks ETH for simplicity on testnet
-    function stake(bytes32 jobId, address providerAddress) external payable {
+    // requester must approve this contract for `amount` USDC before calling
+    function stake(bytes32 jobId, address providerAddress, uint256 amount) external {
         require(stakes[jobId].requester == address(0), "Job ID already exists");
-        require(msg.value > 0, "Must stake some ETH");
+        require(amount > 0, "Must stake some USDC");
         require(providerAddress != address(0), "Provider cannot be zero address");
+
+        require(usdc.transferFrom(msg.sender, address(this), amount), "USDC transfer failed");
 
         stakes[jobId] = StakeData({
             requester: msg.sender,
             provider: providerAddress,
-            amount: msg.value,
+            amount: amount,
             outputHash: bytes32(0),
             released: false,
             stakedAt: block.timestamp
         });
 
-        emit Staked(jobId, msg.sender, providerAddress, msg.value);
+        emit Staked(jobId, msg.sender, providerAddress, amount);
     }
 
-    // requester calls this after ZK proof verified
+    // requester (or operator) calls this after ZK proof verified
     function release(bytes32 jobId, bytes32 outputHash) external {
         StakeData storage s = stakes[jobId];
         require(msg.sender == s.requester || msg.sender == operator, "Not authorized");
@@ -53,8 +63,7 @@ contract EdgentEscrow {
         s.outputHash = outputHash;
         s.released = true;
 
-        (bool success, ) = s.provider.call{value: s.amount}("");
-        require(success, "ETH transfer failed");
+        require(usdc.transfer(s.provider, s.amount), "USDC transfer failed");
 
         emit Released(jobId, outputHash, s.amount);
     }
@@ -66,8 +75,7 @@ contract EdgentEscrow {
         require(block.timestamp >= s.stakedAt + RELEASE_TIMEOUT, "Timeout not reached");
 
         s.released = true;
-        (bool success, ) = s.provider.call{value: s.amount}("");
-        require(success, "ETH transfer failed");
+        require(usdc.transfer(s.provider, s.amount), "USDC transfer failed");
 
         emit TimeoutClaimed(jobId, s.provider, s.amount);
     }
@@ -79,8 +87,7 @@ contract EdgentEscrow {
         require(block.timestamp >= s.stakedAt + RELEASE_TIMEOUT, "Too early");
 
         s.released = true;
-        (bool success, ) = s.requester.call{value: s.amount}("");
-        require(success, "Refund failed");
+        require(usdc.transfer(s.requester, s.amount), "USDC refund failed");
 
         emit Refunded(jobId, s.requester, s.amount);
     }
