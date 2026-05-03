@@ -135,7 +135,9 @@ ok "npm packages installed"
 log "Building AXL mesh binary..."
 
 if [[ ! -d "axl" ]]; then
-  die "axl/ source directory not found in $(pwd). Is this the correct repo?"
+  log "Cloning AXL source..."
+  git clone https://github.com/gensyn-ai/axl.git axl
+  ok "AXL source cloned"
 fi
 
 mkdir -p axl-bin
