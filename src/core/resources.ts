@@ -16,7 +16,7 @@ export async function getResources(): Promise<ResourceStatus> {
         si.mem()
     ]);
 
-    const cpuPercent = load.currentLoad;
+    const cpuPercent = 100 - load.currentLoad;
 
     //mem.available is more accurate than mem.free for what's actually usable by applications.
     //systeminformation returns values in bytes, so we divide by 1024^2 for MB
