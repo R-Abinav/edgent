@@ -8,6 +8,7 @@ import { EventEmitter } from 'events';
 import { runInference } from './core/executor';
 import { generateZKProof, verifyZKProof, axlKeyToBigInts } from './core/integrity';
 import { notifyKeeperHub } from './core/payment';
+import { stakeForJob, verifyStake } from './core/escrow';
 
 async function main() {
     //read role from CLI arg
@@ -105,10 +106,18 @@ async function main() {
                     case 'task_request': {
                         console.log(`[edgent] Received task_request from ${msg.fromPeerId}`);
                         
-                        // TODO Phase 3: Verify stake onchain via escrow.ts
-                        // const stakeValid = await verifyStake(data.jobId);
-                        // if (!stakeValid) { send error back; break; }
-                        console.log(`[edgent] [TODO: onchain stake verification] Proceeding with task...`);
+                        // Verify stake is live onchain before doing any work
+                        try {
+                            const stake = await verifyStake(data.jobId);
+                            if (stake.released) {
+                                console.error(`[edgent] Stake already released for job ${data.jobId} — rejecting`);
+                                break;
+                            }
+                            console.log(`[edgent] Stake verified: ${stake.amount} USDC locked onchain`);
+                        } catch (err: any) {
+                            console.error(`[edgent] Stake not found for job ${data.jobId}:`, err.message);
+                            break;
+                        }
                         
                         try {
                             const result = await runInference(data.task.model, data.task.prompt);
@@ -277,9 +286,9 @@ async function main() {
             const requestId = randomUUID();
             const jobId = '0x' + randomUUID().replace(/-/g, '');
 
-            // TODO Phase 3: Call wallet.ts stakeForJob(jobId, targetPeer, ENV.PRICE_PER_JOB_USDC)
-            // await stakeForJob(jobId, targetPeer, ENV.PRICE_PER_JOB_USDC);
-            console.log(`[edgent] [TODO: stake] Would lock ${ENV.PRICE_PER_JOB_USDC || '0.01'} USDC in escrow for job ${jobId}`);
+            // Stake USDC in escrow before sending task_request
+            await stakeForJob(jobId, targetPeer, ENV.PRICE_PER_JOB_USDC || '0.01');
+            console.log(`[edgent] Stake confirmed for job ${jobId}`);
 
             const resultPromise = new Promise((resolve, reject) => {
                 pendingTasks.set(requestId, { resolve, reject });
