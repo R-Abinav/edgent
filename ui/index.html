@@ -316,6 +316,46 @@
     color: var(--bg);
   }
 
+  .play-pause-overlay {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 5rem;
+    color: var(--primary);
+    text-shadow: 0 0 20px var(--primary);
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.2s;
+    z-index: 5;
+  }
+  .play-pause-overlay.paused {
+    opacity: 0.9;
+  }
+
+  .video-timeline {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 5px;
+    -webkit-appearance: none;
+    appearance: none;
+    background: rgba(255, 255, 255, 0.3);
+    outline: none;
+    z-index: 10;
+    margin: 0;
+    padding: 0;
+    cursor: pointer;
+    border-top: 1px solid rgba(0,0,0,0.5);
+  }
+  .video-timeline::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 0;
+    height: 0;
+  }
+
   /* Section 3 - ABOUT */
   #about {
     padding: 8rem 1rem;
@@ -548,7 +588,9 @@
             <div class="terminal-title">edgent@node:~$</div>
           </div>
           <div class="terminal-body">
-            <video id="terminal-video" src="demo.mp4" autoplay muted loop playsinline></video>
+            <video id="terminal-video" src="demo.mp4" autoplay muted loop playsinline style="cursor: pointer;" onclick="togglePlay()"></video>
+            <div id="play-pause-icon" class="play-pause-overlay">⏸</div>
+            <input type="range" id="video-timeline" class="video-timeline" value="0" min="0" max="100" step="0.1">
             <button class="audio-toggle" onclick="toggleAudio()">
               <span id="audio-icon">🔇</span> UNMUTE
             </button>
@@ -649,6 +691,19 @@ npx tsx src/agent.ts --force-delegate --prompt="your task here"</code>
   </footer>
 
   <script>
+    // Video play/pause functionality
+    function togglePlay() {
+      const vid = document.getElementById('terminal-video');
+      const icon = document.getElementById('play-pause-icon');
+      if (vid.paused) {
+        vid.play();
+        icon.classList.remove('paused');
+      } else {
+        vid.pause();
+        icon.classList.add('paused');
+      }
+    }
+
     // Audio toggle functionality
     function toggleAudio() {
       const vid = document.getElementById('terminal-video');
@@ -681,6 +736,23 @@ npx tsx src/agent.ts --force-delegate --prompt="your task here"</code>
 
     // Scroll reveal using IntersectionObserver
     document.addEventListener("DOMContentLoaded", () => {
+      // Video timeline logic
+      const vid = document.getElementById('terminal-video');
+      const timeline = document.getElementById('video-timeline');
+
+      vid.addEventListener('timeupdate', () => {
+        if (vid.duration) {
+          const percentage = (vid.currentTime / vid.duration) * 100;
+          timeline.value = percentage;
+          timeline.style.background = `linear-gradient(to right, var(--primary) ${percentage}%, rgba(255, 255, 255, 0.3) ${percentage}%)`;
+        }
+      });
+
+      timeline.addEventListener('input', (e) => {
+        const seekTime = (e.target.value / 100) * vid.duration;
+        vid.currentTime = seekTime;
+      });
+
       const reveals = document.querySelectorAll('.reveal');
       
       const observer = new IntersectionObserver((entries) => {
