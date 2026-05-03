@@ -22,13 +22,18 @@ export const ENV = {
   DEFAULT_MODEL: process.env.DEFAULT_MODEL || 'tinyllama',
 
   // Wallet
-  WALLET_PRIVATE_KEY: process.env.WALLET_PRIVATE_KEY || '',
-  WALLET_ADDRESS: process.env.WALLET_ADDRESS || '',
+  DEPLOYER_PRIVATE_KEY: process.env.DEPLOYER_PRIVATE_KEY || '',
+  DEPLOYER_WALLET_ADDRESS: process.env.DEPLOYER_WALLET_ADDRESS || '',
+  REQUESTER_WALLET_ADDRESS: process.env.REQUESTER_WALLET_ADDRESS || '',
+  PROVIDER_WALLET_ADDRESS: process.env.PROVIDER_WALLET_ADDRESS || '',
 
   // Escrow contract (deployed on Base Sepolia)
   ESCROW_CONTRACT_ADDRESS: process.env.ESCROW_CONTRACT_ADDR || '',
 
   // KeeperHub
+  KEEPERHUB_API_KEY: process.env.KEEPERHUB_API_KEY || '',
+  KEEPERHUB_BASE_URL: process.env.KEEPERHUB_BASE_URL || '',
+  KEEPERHUB_WALLET_ADDRESS: process.env.KEEPERHUB_WALLET_ADDRESS || '',
   KEEPERHUB_WEBHOOK_URL: process.env.KEEPERHUB_WEBHOOK_URL || '',
   KEEPERHUB_TOKEN: process.env.KEEPERHUB_TOKEN || '',
 
@@ -39,4 +44,7 @@ export const ENV = {
   // Payment
   PRICE_PER_JOB_USDC: process.env.PRICE_PER_JOB_USDC || '0.01',
   CHAIN: (process.env.CHAIN as 'base-sepolia' | 'base') || 'base-sepolia',
+
+  // Test Net
+  BASE_SEPOLIA_RPC_URL: process.env.BASE_SEPOLIA_RPC_URL || 'https://sepolia.base.org',
 }
