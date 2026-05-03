@@ -142,7 +142,7 @@ fi
 
 mkdir -p axl-bin
 
-(cd axl && make build 2>&1) || die "AXL build failed — check axl/Makefile"
+(cd axl && go build -o node ./cmd/node 2>&1) || die "AXL build failed"
 cp axl/node axl-bin/node
 chmod +x axl-bin/node
 
