@@ -22,7 +22,8 @@ export const ENV = {
   DEFAULT_MODEL: process.env.DEFAULT_MODEL || 'tinyllama',
 
   // Wallet
-  DEPLOYER_PRIVATE_KEY: process.env.DEPLOYER_PRIVATE_KEY || '',
+  WALLET_PRIVATE_KEY: process.env.WALLET_PRIVATE_KEY || '',   // per-node signing key
+  DEPLOYER_PRIVATE_KEY: process.env.DEPLOYER_PRIVATE_KEY || '', // one-time deploy only — used by hardhat/
   DEPLOYER_WALLET_ADDRESS: process.env.DEPLOYER_WALLET_ADDRESS || '',
   REQUESTER_WALLET_ADDRESS: process.env.REQUESTER_WALLET_ADDRESS || '',
   PROVIDER_WALLET_ADDRESS: process.env.PROVIDER_WALLET_ADDRESS || '',
