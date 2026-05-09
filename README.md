@@ -5,6 +5,9 @@
 Submitted to ETHGlobal Open Agents 2026.
 Prize tracks: Gensyn AXL, KeeperHub, ENS.
 
+Demo Video: https://youtu.be/OioOGf5Mkr4?si=P3PAlxA_XH79tt2C
+Promo Video: https://youtu.be/Wwsi2bcCXcU?si=4yLAWRu984x1Kxbg
+
 ---
 
 ## Table of Contents
